@@ -1,5 +1,7 @@
 'use strict';
 
+/* global dennisVault */
+
 const keepass = {};
 keepass.associated = { 'value': false, 'hash': null };
 keepass.featuresList = {
@@ -57,11 +59,21 @@ browser.storage.local.get({ 'latestKeePassXC': { 'version': '', 'lastChecked': n
 //--------------------------------------------------------------------------
 
 keepass.addCredentials = async function(tab, args = []) {
+    if (await dennisVault.isEnabled()) {
+        const [ username, password, url ] = args;
+        return dennisVault.saveCredentials(username, password, url);
+    }
+
     const [ username, password, url, group, groupUuid ] = args;
     return keepass.updateCredentials(tab, [ null, username, password, url, group, groupUuid ]);
 };
 
 keepass.updateCredentials = async function(tab, args = []) {
+    if (await dennisVault.isEnabled()) {
+        const [ _entryId, username, password, url ] = args;
+        return dennisVault.saveCredentials(username, password, url);
+    }
+
     try {
         const [ entryId, username, password, url, group, groupUuid ] = args;
         const taResponse = await keepass.testAssociation(tab);
@@ -115,6 +127,23 @@ keepass.updateCredentials = async function(tab, args = []) {
 };
 
 keepass.retrieveCredentials = async function(tab, args = []) {
+    if (await dennisVault.isEnabled()) {
+        try {
+            const [ url ] = args;
+            const entries = await dennisVault.retrieveCredentials(url || tab?.url || '');
+            keepass.isConnected = true;
+            keepass.isDatabaseClosed = false;
+            keepass.isKeePassXCAvailable = true;
+            keepass.associated.value = true;
+            keepass.associated.hash = 'dennis-vault';
+            keepass.databaseHash = 'dennis-vault';
+            return removeDuplicateEntries(entries);
+        } catch (err) {
+            keepass.handleError(tab, kpErrors.UNKNOWN_ERROR, err.message || String(err));
+            return [];
+        }
+    }
+
     try {
         const [ url, submiturl, triggerUnlock = false, httpAuth = false ] = args;
         const taResponse = await keepass.testAssociation(tab, [ false, triggerUnlock ]);
@@ -214,6 +243,16 @@ keepass.generatePassword = async function(tab) {
 };
 
 keepass.associate = async function(tab) {
+    if (await dennisVault.isEnabled()) {
+        keepass.isConnected = true;
+        keepass.isDatabaseClosed = false;
+        keepass.isKeePassXCAvailable = true;
+        keepass.associated.value = true;
+        keepass.associated.hash = 'dennis-vault';
+        keepass.databaseHash = 'dennis-vault';
+        return AssociatedAction.ASSOCIATED;
+    }
+
     if (keepass.isAssociated()) {
         return AssociatedAction.ASSOCIATED;
     }
@@ -258,6 +297,17 @@ keepass.associate = async function(tab) {
 };
 
 keepass.testAssociation = async function(tab, args = []) {
+    if (await dennisVault.isEnabled()) {
+        keepass.clearErrorMessage(tab);
+        keepass.isConnected = true;
+        keepass.isDatabaseClosed = false;
+        keepass.isKeePassXCAvailable = true;
+        keepass.associated.value = true;
+        keepass.associated.hash = 'dennis-vault';
+        keepass.databaseHash = 'dennis-vault';
+        return true;
+    }
+
     keepass.clearErrorMessage(tab);
 
     try {
@@ -318,6 +368,14 @@ keepass.testAssociation = async function(tab, args = []) {
 };
 
 keepass.getDatabaseHash = async function(tab, args = []) {
+    if (await dennisVault.isEnabled()) {
+        keepass.isConnected = true;
+        keepass.isDatabaseClosed = false;
+        keepass.isKeePassXCAvailable = true;
+        keepass.databaseHash = 'dennis-vault';
+        return keepass.databaseHash;
+    }
+
     if (!keepass.isConnected) {
         keepass.handleError(tab, kpErrors.TIMEOUT_OR_NOT_CONNECTED);
         return '';
@@ -448,6 +506,15 @@ keepass.changePublicKeys = async function(tab, enableTimeout = false, connection
 };
 
 keepass.lockDatabase = async function(tab) {
+    if (await dennisVault.isEnabled()) {
+        dennisVault.clearOtp();
+        keepass.isConnected = true;
+        keepass.isDatabaseClosed = false;
+        keepass.isKeePassXCAvailable = true;
+        page.clearAllLogins();
+        return true;
+    }
+
     if (!keepass.isConnected) {
         keepass.handleError(tab, kpErrors.TIMEOUT_OR_NOT_CONNECTED);
         return false;
@@ -481,6 +548,19 @@ keepass.lockDatabase = async function(tab) {
 };
 
 keepass.getDatabaseGroups = async function(tab) {
+    if (await dennisVault.isEnabled()) {
+        const settings = await dennisVault.settings();
+        return {
+            groups: [
+                {
+                    name: settings.defaultProfileId,
+                    uuid: settings.defaultProfileId,
+                    children: [],
+                },
+            ],
+        };
+    }
+
     try {
         const taResponse = await keepass.testAssociation(tab, [ false ]);
         if (!taResponse) {
@@ -559,6 +639,10 @@ keepass.createNewGroup = async function(tab, args = []) {
 };
 
 keepass.getTotp = async function(tab, args = []) {
+    if (await dennisVault.isEnabled()) {
+        return '';
+    }
+
     const [ uuid, oldTotp ] = args;
     if (!keepass.featuresList.newTotp) {
         return oldTotp;
@@ -857,6 +941,10 @@ keepass.generateNewKeyPair = function() {
 };
 
 keepass.isConfigured = async function() {
+    if (await dennisVault.isEnabled()) {
+        return true;
+    }
+
     if (typeof(keepass.databaseHash) === 'undefined') {
         const hash = keepass.getDatabaseHash();
         return Object.hasOwn(keepass.keyRing, hash);

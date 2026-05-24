@@ -8,6 +8,7 @@ try {
         'nacl.min.js',
         'nacl-util.min.js',
         'client.js',
+        'dennis-vault.js',
         'keepass.js',
         'httpauth.js',
         'offscreen.js',

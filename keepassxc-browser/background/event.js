@@ -1,5 +1,7 @@
 'use strict';
 
+/* global dennisVault */
+
 const kpxcEvent = {};
 
 kpxcEvent.onMessage = async function(request, sender) {
@@ -14,6 +16,27 @@ kpxcEvent.onMessage = async function(request, sender) {
 };
 
 kpxcEvent.showStatus = async function(tab, configured, internalPoll, forceShowDefault = false) {
+    if (await dennisVault.isEnabled()) {
+        if (!internalPoll || forceShowDefault) {
+            browserAction.showDefault(tab);
+        }
+
+        const currentTab = tabs.getTabFromId(tab.id);
+        return {
+            associated: true,
+            configured: true,
+            databaseClosed: false,
+            encryptionKeyUnrecognized: false,
+            error: currentTab?.errorMessage ?? undefined,
+            iframeDetected: currentTab?.iframeDetected ?? false,
+            identifier: 'Dennis Vault',
+            keePassXCAvailable: true,
+            showGettingStartedGuideAlert: false,
+            showTroubleshootingGuideAlert: false,
+            usernameFieldDetected: currentTab?.usernameFieldDetected ?? false,
+        };
+    }
+
     let keyId = null;
     if (configured && keepass.databaseHash !== ''
         && Object.hasOwn(keepass.keyRing, keepass.databaseHash)) {
