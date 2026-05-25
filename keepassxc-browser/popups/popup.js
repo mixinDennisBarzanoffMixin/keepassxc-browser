@@ -78,6 +78,37 @@ const sendMessageToTab = async function(message) {
     return true;
 };
 
+function dennisSetStatus(message, isError = false) {
+    const status = $('#dennis-status');
+    status.textContent = message;
+    status.className = isError ? 'small mb-2 text-danger' : 'small mb-2 text-muted';
+}
+
+function dennisLoadEditor(entry = {}) {
+    $('#dennis-editor').show();
+    $('#dennis-profile').value = entry.profile_id || entry.profileId || 'personal';
+    $('#dennis-label').value = entry.label || '';
+    $('#dennis-site').value = entry.site || $('#dennis-domain').value.trim();
+    $('#dennis-username').value = entry.username || '';
+    $('#dennis-password').value = entry.password || '';
+}
+
+function dennisShowEntries(entries) {
+    const list = $('#dennis-entries');
+    list.replaceChildren();
+    for (const entry of entries) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'list-group-item list-group-item-action py-1';
+        const profile = entry.profile_id ? `[${entry.profile_id}] ` : '';
+        const title = entry.label || entry.username || 'Login';
+        const detail = entry.username_hint || entry.username || entry.site || '';
+        button.textContent = `${profile}${title} ${detail ? `(${detail})` : ''}`;
+        button.addEventListener('click', () => dennisLoadEditor(entry));
+        list.appendChild(button);
+    }
+}
+
 (async () => {
     await initColorTheme();
 
@@ -145,6 +176,59 @@ const sendMessageToTab = async function(message) {
         await sendMessageToTab('add_allow_iframes_option');
         await sendMessageToTab('redetect_fields');
         $('#iframe-detected').hide();
+    });
+
+    $('#dennis-read').addEventListener('click', async () => {
+        const domain = $('#dennis-domain').value.trim();
+        const otp = $('#dennis-otp').value.trim();
+        if (!domain || !otp) {
+            dennisSetStatus('Enter domain and OTP.', true);
+            return;
+        }
+        try {
+            dennisSetStatus(`Reading ${domain}...`);
+            const data = await browser.runtime.sendMessage({
+                action: 'dennis_vault_read_domain',
+                args: [ domain, otp ]
+            });
+            dennisShowEntries(data.entries || []);
+            dennisSetStatus((data.entries || []).length ? `Found ${(data.entries || []).length} login(s).` : 'No saved logins.', !(data.entries || []).length);
+            $('#dennis-otp').value = '';
+        } catch (err) {
+            dennisSetStatus(String(err.message || err), true);
+        }
+    });
+
+    $('#dennis-new').addEventListener('click', () => dennisLoadEditor({
+        profile_id: 'personal',
+        site: $('#dennis-domain').value.trim(),
+    }));
+
+    $('#dennis-save').addEventListener('click', async () => {
+        const otp = $('#dennis-otp').value.trim();
+        const domain = $('#dennis-domain').value.trim();
+        if (!domain || !otp || !$('#dennis-password').value) {
+            dennisSetStatus('Enter domain, OTP, and password.', true);
+            return;
+        }
+        try {
+            await browser.runtime.sendMessage({
+                action: 'dennis_vault_save_login',
+                args: [ {
+                    domain,
+                    otpCode: otp,
+                    profileId: $('#dennis-profile').value.trim() || 'personal',
+                    label: $('#dennis-label').value.trim(),
+                    site: $('#dennis-site').value.trim() || domain,
+                    username: $('#dennis-username').value.trim(),
+                    password: $('#dennis-password').value,
+                } ]
+            });
+            $('#dennis-otp').value = '';
+            dennisSetStatus('Saved. Re-read the domain to confirm.');
+        } catch (err) {
+            dennisSetStatus(String(err.message || err), true);
+        }
     });
 
     $('#getting-started-alert-close-button').addEventListener('click', async () => {

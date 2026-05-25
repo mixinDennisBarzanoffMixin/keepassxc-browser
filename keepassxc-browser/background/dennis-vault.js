@@ -184,3 +184,32 @@ dennisVault.saveCredentials = async function(username, password, url) {
         throw err;
     }
 };
+
+dennisVault.readDomainManual = async function(domain, otpCode) {
+    const normalizedDomain = dennisVault.domainFromUrl(domain) || domain.replace(/^www\./i, '').toLowerCase();
+    const data = await dennisVault.post('/secrets/read-domain', {
+        /* eslint-disable camelcase */
+        domain: normalizedDomain,
+        otp_code: otpCode,
+        /* eslint-enable camelcase */
+    });
+    return {
+        domain: data.domain || normalizedDomain,
+        entries: data.entries || [],
+    };
+};
+
+dennisVault.saveLoginManual = async function(payload) {
+    await dennisVault.post('/secrets/save-login', {
+        /* eslint-disable camelcase */
+        domain: dennisVault.domainFromUrl(payload.domain) || payload.domain,
+        profile_id: payload.profileId || 'personal',
+        label: payload.label || payload.username || payload.domain,
+        username: payload.username || '',
+        password: payload.password || '',
+        site: payload.site || payload.domain,
+        otp_code: payload.otpCode,
+        /* eslint-enable camelcase */
+    });
+    return true;
+};

@@ -132,6 +132,27 @@
         </div>
       </div>
 
+      <hr>
+      <div id="dennis-vault-manager">
+        <h6>Dennis Vault</h6>
+        <input id="dennis-domain" class="form-control form-control-sm mb-1" placeholder="Domain, e.g. github.com">
+        <input id="dennis-otp" class="form-control form-control-sm mb-1" placeholder="OTP" type="password" inputmode="numeric">
+        <div class="d-flex gap-1 mb-2">
+          <button id="dennis-read" class="btn btn-sm btn-primary flex-fill">Read</button>
+          <button id="dennis-new" class="btn btn-sm btn-secondary flex-fill">New</button>
+        </div>
+        <div id="dennis-status" class="small mb-2"></div>
+        <div id="dennis-entries" class="list-group mb-2"></div>
+        <div id="dennis-editor" style="display: none">
+          <input id="dennis-profile" class="form-control form-control-sm mb-1" placeholder="Profile">
+          <input id="dennis-label" class="form-control form-control-sm mb-1" placeholder="Label">
+          <input id="dennis-site" class="form-control form-control-sm mb-1" placeholder="Site URL">
+          <input id="dennis-username" class="form-control form-control-sm mb-1" placeholder="Username">
+          <input id="dennis-password" class="form-control form-control-sm mb-1" placeholder="Password">
+          <button id="dennis-save" class="btn btn-sm btn-success w-100">Save login</button>
+        </div>
+      </div>
+
       <div id="iframe-detected" style="display: none">
         <hr>
         <p data-i18n="popupIframeDetected"></p>
