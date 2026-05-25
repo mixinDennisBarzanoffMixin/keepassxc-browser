@@ -31,6 +31,16 @@ dennisVault.isEnabled = async function() {
     return (await dennisVault.settings()).enabled;
 };
 
+dennisVault.markAvailable = function() {
+    keepass.isConnected = true;
+    keepass.isDatabaseClosed = false;
+    keepass.isKeePassXCAvailable = true;
+    keepass.isEncryptionKeyUnrecognized = false;
+    keepass.associated.value = true;
+    keepass.associated.hash = 'dennis-vault';
+    keepass.databaseHash = 'dennis-vault';
+};
+
 dennisVault.setOtp = function(otpCode) {
     dennisVault.session.otpCode = otpCode;
     dennisVault.session.expiresAt = Date.now() + dennisVault.otpTtlMs;
