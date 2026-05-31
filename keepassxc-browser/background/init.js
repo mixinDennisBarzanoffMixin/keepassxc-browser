@@ -5,8 +5,16 @@ const contextMenuItems = [
     { title: tr('contextMenuFillPassword'), action: 'fill_password' },
     { title: tr('contextMenuFillTOTP'), action: 'fill_totp' },
     { title: tr('contextMenuFillAttribute'), id: 'fill_attribute', visible: false },
-    { title: tr('contextMenuShowPasswordGenerator'), action: 'show_password_generator' },
-    { title: tr('contextMenuSaveCredentials'), action: 'save_credentials' },
+    {
+        title: tr('contextMenuShowPasswordGenerator'),
+        action: 'show_password_generator',
+        contexts: [ 'editable', 'page' ],
+    },
+    {
+        title: tr('contextMenuSaveCredentials'),
+        action: 'save_credentials',
+        contexts: [ 'editable', 'page' ],
+    },
     { title: tr('contextMenuRequestGlobalAutoType'), action: 'request_autotype' }
 ];
 
@@ -98,12 +106,15 @@ const initContextMenuItems = async function() {
     await browser.contextMenus.removeAll();
     for (const item of contextMenuItems) {
         try {
-            await browser.contextMenus.create({
+            const createOptions = {
                 title: item.title,
-                contexts: page.menuContexts,
-                visible: item.visible,
+                contexts: item.contexts || page.menuContexts,
                 id: item.id || item.action
-            });
+            };
+            if (item.visible !== undefined) {
+                createOptions.visible = item.visible;
+            }
+            await browser.contextMenus.create(createOptions);
         } catch (e) {
             logError(e);
         }
