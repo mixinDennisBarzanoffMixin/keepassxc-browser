@@ -10,6 +10,71 @@ const MAX_SEGMENTED_FIELD_LENGTH = 100;
  */
 const kpxcFields = {};
 kpxcFields.popoverSupported = true;
+kpxcFields.passwordFieldNeedles = [
+    'password',
+    'passwort',
+    'kennwort',
+    'pwd',
+    'passwort2',
+    'newpass',
+    'new-pass',
+    'neues kennwort',
+    'repeat',
+    'reenter',
+    're-enter',
+    'reneter',
+    'confirm',
+    'confirmation',
+    'bestätigen',
+    'bestaetigen',
+    'wiederholen',
+];
+
+kpxcFields.getFieldSignature = function(field) {
+    if (!field) {
+        return '';
+    }
+
+    const labels = field.id
+        ? Array.from(document.querySelectorAll(`label[for="${CSS.escape(field.id)}"]`))
+            .map(label => label.textContent || '')
+            .join(' ')
+        : '';
+
+    return [
+        field.getLowerCaseAttribute?.('autocomplete') ?? field.autocomplete,
+        field.name,
+        field.id,
+        field.placeholder,
+        field.getAttribute?.('aria-label'),
+        field.getAttribute?.('aria-labelledby'),
+        field.className,
+        labels,
+        field.type,
+    ].join(' ').toLowerCase();
+};
+
+kpxcFields.isPasswordLikeField = function(field) {
+    if (!matchesWithNodeName(field, 'INPUT') || field.disabled || field.readOnly) {
+        return false;
+    }
+
+    const type = field.getLowerCaseAttribute('type');
+    if (type === 'password') {
+        return true;
+    }
+
+    if (type !== 'text' && type !== '') {
+        return false;
+    }
+
+    const signature = kpxcFields.getFieldSignature(field);
+    return kpxcFields.passwordFieldNeedles.some(needle => signature.includes(needle));
+};
+
+kpxcFields.getPasswordInputs = function(root = document) {
+    return Array.from(root.querySelectorAll('input')).filter(kpxcFields.isPasswordLikeField);
+};
 
 // Returns all username & password combinations detected from the inputs.
 // After username field is detected, first password field found after that will be saved as a combination.
@@ -22,12 +87,13 @@ kpxcFields.getAllCombinations = async function(inputs) {
             continue;
         }
 
-        if (input.getLowerCaseAttribute('type') === 'password') {
+        if (kpxcFields.isPasswordLikeField(input)) {
+            const form = input.form || kpxc.getForm(input);
             const combination = {
                 username: (!usernameField || usernameField.size < 1) ? null : usernameField,
                 password: input,
-                passwordInputs: [ input ],
-                form: input.form
+                passwordInputs: form ? kpxcFields.getPasswordInputs(form) : [ input ],
+                form
             };
 
             combinations.push(kpxcFields.getExistingCombination(combination));
@@ -388,7 +454,7 @@ kpxcFields.handleSegmentedTOTPFields = function(inputs, combinations) {
 // Check for new password via autocomplete attribute
 kpxcFields.isAutocompleteAppropriate = function(field) {
     const autocomplete = field.getLowerCaseAttribute('autocomplete');
-    return autocomplete !== 'new-password';
+    return autocomplete !== 'new-password' || kpxcFields.isPasswordLikeField(field);
 };
 
 // Checks if Custom Login Fields are used for the site

@@ -284,7 +284,7 @@ kpxcForm.saveForm = function(form, combination) {
             e => matchesWithNodeName(e, 'INPUT') && kpxcTOTPIcons.isValid(e),
         ),
         passwordInputs: Array.from(form.elements).filter(
-            e => matchesWithNodeName(e, 'INPUT') && e.type === 'password',
+            e => kpxcFields.isPasswordLikeField(e),
         )
     });
 };

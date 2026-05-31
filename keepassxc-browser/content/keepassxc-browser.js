@@ -21,10 +21,23 @@ kpxc.databaseState = DatabaseState.DISCONNECTED;
 kpxc.detectedFields = 0;
 kpxc.improvedFieldDetectionEnabledForPage = false;
 kpxc.inputs = [];
+kpxc.lastActiveInput = null;
 kpxc.settings = {};
 kpxc.singleInputEnabledForPage = false;
 kpxc.submitUrl = null;
 kpxc.url = null;
+
+document.addEventListener('focusin', (e) => {
+    if (matchesWithNodeName(e.target, 'INPUT')) {
+        kpxc.lastActiveInput = e.target;
+    }
+});
+
+document.addEventListener('contextmenu', (e) => {
+    if (matchesWithNodeName(e.target, 'INPUT')) {
+        kpxc.lastActiveInput = e.target;
+    }
+});
 
 // Add page to Site Preferences with a selected option enabled. Set from the popup.
 kpxc.addToSitePreferences = async function(optionName, addWildcard = false) {
@@ -619,22 +632,28 @@ kpxc.rememberCredentialsFromContextMenu = async function() {
         return;
     }
 
-    const el = document.activeElement;
+    const el = matchesWithNodeName(document.activeElement, 'INPUT')
+        ? document.activeElement
+        : kpxc.lastActiveInput;
     if (!matchesWithNodeName(el, 'INPUT')) {
+        kpxcUI.createNotification('error', tr('rememberNoPassword'));
         return;
     }
 
-    const combination = await kpxcFields.getCombination(el);
+    const combination = await kpxcFields.getCombination(el) || kpxc.findSaveCredentialFields(el);
     if (!combination) {
         logDebug('Error: No combination found.');
+        kpxcUI.createNotification('error', tr('rememberNoPassword'));
         return;
     }
 
     const usernameValue = combination.username?.value ?? '';
-    const passwordValue = combination.password?.value ?? '';
+    const passwordValue = combination.password?.value
+        ?? combination.passwordInputs?.find(input => input?.value)?.value
+        ?? '';
 
     const result = await kpxc.rememberCredentials(usernameValue, passwordValue, undefined, undefined,
-        kpxc.settings.showLoginNotifications);
+        false);
     if (result === undefined) {
         kpxcUI.createNotification('error', tr('rememberNoPassword'));
         return;
@@ -643,6 +662,28 @@ kpxc.rememberCredentialsFromContextMenu = async function() {
     if (!result) {
         kpxcUI.createNotification('warning', tr('rememberCredentialsExists'));
     }
+};
+
+kpxc.findSaveCredentialFields = function(el) {
+    const form = kpxc.getForm(el) || el?.closest?.('form');
+    const root = form || document;
+    const password = matchesWithNodeName(el, 'INPUT') && kpxcFields.isPasswordLikeField(el)
+        ? el
+        : kpxcFields.getPasswordInputs(root)[0];
+    if (!password) {
+        return undefined;
+    }
+
+    const username = root.querySelector(
+        'input[type=email], input[autocomplete=username], input[name*=user i], input[id*=user i], input[name*=login i], input[id*=login i], input[type=text]',
+    );
+
+    return {
+        username: username || null,
+        password,
+        passwordInputs: kpxcFields.getPasswordInputs(root),
+        form: form || password.form,
+    };
 };
 
 // The basic function for retrieving credentials from KeePassXC.
@@ -659,9 +700,16 @@ kpxc.retrieveCredentials = async function(force = false) {
     kpxc.submitUrl = kpxc.getFormActionUrl(firstCombination);
 
     if (kpxc.settings.autoRetrieveCredentials && kpxc.url && kpxc.submitUrl) {
-        await kpxc.retrieveCredentialsCallback(
-            await sendMessage('retrieve_credentials', [ kpxc.url, kpxc.submitUrl, force ]),
-        );
+        try {
+            await kpxc.retrieveCredentialsCallback(
+                await sendMessage('retrieve_credentials', [ kpxc.url, kpxc.submitUrl, force ]),
+            );
+        } catch (err) {
+            logDebug(`Credential retrieval failed: ${err}`);
+            if (force) {
+                throw err;
+            }
+        }
     }
 };
 

@@ -106,11 +106,36 @@ kpxcPasswordGenerator.showPasswordGenerator = async function(field) {
 
 kpxcPasswordGenerator.generate = async function(field) {
     if (!await isPasswordGeneratorSupported()) {
-        kpxcUI.createNotification('error', tr('passwordGeneratorNotSupported'));
+        kpxcPasswordGenerator.fill(field, kpxcPasswordGenerator.generateLocalPassword());
         return;
     }
 
-    kpxcPasswordGenerator.fill(field, await sendMessage('generate_password'));
+    const password = await sendMessage('generate_password');
+    kpxcPasswordGenerator.fill(field, password || kpxcPasswordGenerator.generateLocalPassword());
+};
+
+kpxcPasswordGenerator.generateLocalPassword = function(length = 20) {
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghijkmnopqrstuvwxyz';
+    const digits = '23456789';
+    const symbols = '!@#$%^&*()-_=+[]{}';
+    const groups = [ upper, lower, digits, symbols ];
+    const alphabet = groups.join('');
+    const values = new Uint32Array(length + groups.length);
+    crypto.getRandomValues(values);
+    const pick = (chars, value) => chars[value % chars.length];
+    const password = groups.map((chars, index) => pick(chars, values[index]));
+
+    for (let index = password.length; index < length; index += 1) {
+        password.push(pick(alphabet, values[index]));
+    }
+
+    for (let index = password.length - 1; index > 0; index -= 1) {
+        const swap = values[length + (index % groups.length)] % (index + 1);
+        [ password[index], password[swap] ] = [ password[swap], password[index] ];
+    }
+
+    return password.join('');
 };
 
 kpxcPasswordGenerator.fill = function(elem, password) {
@@ -137,20 +162,23 @@ kpxcPasswordGenerator.fill = function(elem, password) {
         }
     }
 
-    elem.value = password;
-    elem.dispatchEvent(new Event('input', { bubbles: true }));
-    elem.dispatchEvent(new Event('change', { bubbles: true }));
+    const fillField = (field) => {
+        field.value = password;
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+    };
 
-    // Fill next password field if found
-    if (kpxc.inputs.length > 0) {
-        const index = kpxc.inputs.indexOf(elem);
-        const next = kpxc.inputs[index + 1];
+    fillField(elem);
+    kpxc.lastActiveInput = elem;
 
-        const nextField = next && next.getLowerCaseAttribute('type') === 'password' ? next : undefined;
-        if (nextField) {
-            nextField.value = password;
-            nextField.dispatchEvent(new Event('input', { bubbles: true }));
-            nextField.dispatchEvent(new Event('change', { bubbles: true }));
+    const form = elem.form || kpxc.getForm(elem);
+    const passwordInputs = form ? kpxcFields.getPasswordInputs(form) : kpxcFields.getPasswordInputs(document);
+    for (const nextField of passwordInputs) {
+        if (nextField !== elem && nextField.maxLength && nextField.maxLength > 0 && password.length > nextField.maxLength) {
+            continue;
+        }
+        if (nextField !== elem) {
+            fillField(nextField);
         }
     }
 };

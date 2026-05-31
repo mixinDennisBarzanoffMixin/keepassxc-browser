@@ -435,7 +435,7 @@ const passwordFillIsAllowed = function(elem) {
         return true;
     }
 
-    return elem?.getLowerCaseAttribute('type') === 'password';
+    return kpxcFields.isPasswordLikeField(elem);
 };
 
 // Show a specific error notification if current database is not connected

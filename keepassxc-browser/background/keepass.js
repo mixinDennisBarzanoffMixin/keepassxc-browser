@@ -129,7 +129,11 @@ keepass.updateCredentials = async function(tab, args = []) {
 keepass.retrieveCredentials = async function(tab, args = []) {
     if (await dennisVault.isEnabled()) {
         try {
-            const [ url ] = args;
+            const [ url, _submiturl, force = false ] = args;
+            if (!force) {
+                dennisVault.markAvailable();
+                return [];
+            }
             dennisVault.markAvailable();
             const entries = await dennisVault.retrieveCredentials(url || tab?.url || '');
             dennisVault.markAvailable();
@@ -534,6 +538,8 @@ keepass.getDatabaseGroups = async function(tab) {
     if (await dennisVault.isEnabled()) {
         const settings = await dennisVault.settings();
         return {
+            defaultGroup: '',
+            defaultGroupAlwaysAsk: false,
             groups: [
                 {
                     name: settings.defaultProfileId,
