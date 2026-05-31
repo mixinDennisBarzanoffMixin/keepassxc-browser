@@ -296,6 +296,11 @@ kpxcEvent.dennisVaultSaveLogin = async function(tab, args = []) {
     return dennisVault.saveLoginManual(args[0] || {});
 };
 
+kpxcEvent.dennisVaultReadProfiles = async function(tab, args = []) {
+    const [ otpCode ] = args;
+    return dennisVault.readIdentityProfilesManual(otpCode);
+};
+
 // All methods named in this object have to be declared BEFORE this!
 kpxcEvent.messageHandlers = {
     'add_credentials': keepass.addCredentials,
@@ -308,6 +313,7 @@ kpxcEvent.messageHandlers = {
     'enable_automatic_reconnect': keepass.enableAutomaticReconnect,
     'disable_automatic_reconnect': keepass.disableAutomaticReconnect,
     'dennis_vault_read_domain': kpxcEvent.dennisVaultReadDomain,
+    'dennis_vault_read_profiles': kpxcEvent.dennisVaultReadProfiles,
     'dennis_vault_save_login': kpxcEvent.dennisVaultSaveLogin,
     'fill_http_auth': page.fillHttpAuth,
     'frame_message': kpxcEvent.sendBackToTabs,

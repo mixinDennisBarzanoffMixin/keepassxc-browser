@@ -220,6 +220,24 @@ dennisVault.readDomainManual = async function(domain, otpCode) {
     };
 };
 
+dennisVault.readIdentityProfilesManual = async function(otpCode) {
+    const data = await dennisVault.post('/identity/read', {
+        /* eslint-disable camelcase */
+        otp_code: otpCode,
+        /* eslint-enable camelcase */
+    });
+    const profiles = (data.identities || [])
+        .map(identity => identity.profile_id || identity.profileId || '')
+        .filter(Boolean);
+    for (const profile of profiles) {
+        await dennisVault.rememberProfile(profile);
+    }
+    return {
+        profiles: Array.from(new Set(profiles)),
+        identities: data.identities || [],
+    };
+};
+
 dennisVault.saveLoginManual = async function(payload) {
     const profileId = payload.profileId || '';
     if (!profileId) {

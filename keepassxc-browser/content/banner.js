@@ -410,19 +410,87 @@ kpxcBanner.createDennisVaultSaveDialog = async function(credentials = {}, profil
             ...profiles.map(profile => profile.name),
         ].filter(Boolean))
     );
-    for (const profile of profileNames) {
-        const option = document.createElement('option');
-        option.value = profile;
-        option.textContent = profile;
-        profileSelect.appendChild(option);
-    }
+    const setProfileOptions = function(names = []) {
+        profileSelect.replaceChildren();
+        for (const profile of names) {
+            const option = document.createElement('option');
+            option.value = profile;
+            option.textContent = profile;
+            profileSelect.appendChild(option);
+        }
 
-    const customProfileOption = document.createElement('option');
-    customProfileOption.value = '';
-    customProfileOption.textContent = profileNames.length ? 'Type profile below' : 'Type profile';
-    profileSelect.appendChild(customProfileOption);
+        const customProfileOption = document.createElement('option');
+        customProfileOption.value = '';
+        customProfileOption.textContent = names.length ? 'Type profile below' : 'Type profile';
+        profileSelect.appendChild(customProfileOption);
+    };
+    setProfileOptions(profileNames);
 
-    const profileInput = field('Profile', existingEntry.group || profileNames[0] || '');
+    const profileInput = field('Profile', existingEntry.group || profileNames[0] || 'personal');
+    profileSelect.addEventListener('change', () => {
+        if (profileSelect.value) {
+            profileInput.value = profileSelect.value;
+        }
+    });
+
+    const unlockRow = kpxcUI.createElement('div');
+    unlockRow.style.display = 'grid';
+    unlockRow.style.gap = '6px';
+    unlockRow.style.gridTemplateColumns = '1fr auto';
+    unlockRow.style.marginTop = '8px';
+
+    const profileOtp = kpxcUI.createElement('input', '', {
+        inputmode: 'numeric',
+        placeholder: 'OTP to unlock profiles',
+        type: 'password',
+    });
+    profileOtp.style.background = 'var(--kpxc-input-background-color)';
+    profileOtp.style.border = '1px solid rgba(0,0,0,.25)';
+    profileOtp.style.borderRadius = '4px';
+    profileOtp.style.boxSizing = 'border-box';
+    profileOtp.style.color = 'var(--kpxc-text-color)';
+    profileOtp.style.padding = '7px';
+    profileOtp.style.width = '100%';
+
+    const unlockProfilesButton = kpxcUI.createElement('button', BLUE_BUTTON, {}, 'Unlock profiles');
+    unlockRow.append(profileOtp, unlockProfilesButton);
+
+    const profileStatus = kpxcUI.createElement('div', '', {}, '');
+    profileStatus.style.fontSize = '12px';
+    profileStatus.style.marginTop = '4px';
+
+    unlockProfilesButton.addEventListener('click', async function(e) {
+        e.preventDefault();
+        if (!e.isTrusted) {
+            return;
+        }
+
+        const otpCode = profileOtp.value.trim();
+        if (!otpCode) {
+            profileStatus.textContent = 'Enter OTP to unlock profile list.';
+            return;
+        }
+
+        try {
+            profileStatus.textContent = 'Unlocking profiles...';
+            const data = await sendMessage('dennis_vault_read_profiles', [ otpCode ]);
+            const unlockedProfiles = Array.from(new Set([
+                ...profileNames,
+                ...(data.profiles || []),
+            ].filter(Boolean)));
+            setProfileOptions(unlockedProfiles);
+            if (unlockedProfiles.length > 0 && !unlockedProfiles.includes(profileInput.value.trim())) {
+                profileInput.value = unlockedProfiles[0];
+            }
+            profileOtp.value = '';
+            profileStatus.textContent = unlockedProfiles.length
+                ? `Unlocked ${unlockedProfiles.length} profile(s).`
+                : 'No profiles found.';
+        } catch (err) {
+            profileStatus.textContent = String(err.message || err);
+        }
+    });
+
     const domainInput = field('Domain', domain);
     const usernameInput = field('Username', credentials.username || existingEntry.login || '');
     const passwordInput = field('Password', credentials.password || '', 'text');
@@ -492,6 +560,8 @@ kpxcBanner.createDennisVaultSaveDialog = async function(credentials = {}, profil
         profileSelect,
         profileInput.previousSibling,
         profileInput,
+        unlockRow,
+        profileStatus,
         domainInput.previousSibling,
         domainInput,
         usernameInput.previousSibling,
