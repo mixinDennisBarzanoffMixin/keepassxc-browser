@@ -185,7 +185,7 @@ kpxcBanner.saveNewCredentials = async function(credentials = {}) {
     }
 
     if (result.dennisVault) {
-        kpxcBanner.createDennisVaultSaveDialog(credentials, result.groups || [], {});
+        await kpxcBanner.createDennisVaultSaveDialog(credentials, result.groups || [], {});
         return;
     }
 
@@ -292,10 +292,52 @@ kpxcBanner.saveNewCredentials = async function(credentials = {}) {
     kpxcBanner.shadowSelector('.kpxc-banner-dialog').style.display = 'block';
 };
 
-kpxcBanner.createDennisVaultSaveDialog = function(credentials = {}, profiles = [], options = {}) {
-    kpxcBanner.shadowSelector('#kpxc-banner-btn-new').hidden = true;
-    kpxcBanner.shadowSelector('#kpxc-banner-btn-update').hidden = true;
-    kpxcBanner.shadowSelector('.kpxc-checkbox').disabled = true;
+kpxcBanner.ensureDennisVaultBanner = function() {
+    if (kpxcBanner.banner && kpxcBanner.shadowRoot) {
+        return;
+    }
+
+    const banner = kpxcUI.createElement('div', 'kpxc-banner kpxc-banner-on-top', { id: 'kpxc-banner-container' });
+    banner.style.zIndex = '2147483646';
+    initColorTheme(banner);
+
+    const styleSheet = createStylesheet('css/banner.css');
+    const buttonStyleSheet = createStylesheet('css/button.css');
+    const colorStyleSheet = createStylesheet('css/colors.css');
+
+    const wrapper = document.createElement('div');
+    wrapper.style.all = 'unset';
+    wrapper.style.display = 'block';
+    kpxcBanner.shadowRoot = wrapper.attachShadow({ mode: 'closed' });
+    kpxcBanner.shadowRoot.append(colorStyleSheet);
+    kpxcBanner.shadowRoot.append(styleSheet);
+    kpxcBanner.shadowRoot.append(buttonStyleSheet);
+    kpxcBanner.shadowRoot.append(banner);
+    kpxcBanner.wrapper = wrapper;
+    kpxcBanner.banner = banner;
+
+    if (window.self === window.top) {
+        window.parent.document.body.appendChild(wrapper);
+        kpxcUI.observeWrapper(wrapper);
+        kpxcBanner.created = true;
+    }
+};
+
+kpxcBanner.createDennisVaultSaveDialog = async function(credentials = {}, profiles = [], options = {}) {
+    kpxcBanner.ensureDennisVaultBanner();
+
+    const newButton = kpxcBanner.shadowSelector('#kpxc-banner-btn-new');
+    const updateButton = kpxcBanner.shadowSelector('#kpxc-banner-btn-update');
+    const ignoreCheckbox = kpxcBanner.shadowSelector('.kpxc-checkbox');
+    if (newButton) {
+        newButton.hidden = true;
+    }
+    if (updateButton) {
+        updateButton.hidden = true;
+    }
+    if (ignoreCheckbox) {
+        ignoreCheckbox.disabled = true;
+    }
 
     const existingDialog = kpxcBanner.shadowSelector('.kpxc-banner-dialog');
     if (existingDialog) {
@@ -458,7 +500,7 @@ kpxcBanner.updateCredentials = async function(credentials = {}) {
     const result = await sendMessage('get_database_groups');
     if (result?.dennisVault && credentials.list?.length === 1) {
         credentials.username ??= credentials.list[0].login;
-        kpxcBanner.createDennisVaultSaveDialog(credentials, result.groups || [], { existingEntry: credentials.list[0] });
+        await kpxcBanner.createDennisVaultSaveDialog(credentials, result.groups || [], { existingEntry: credentials.list[0] });
         return;
     }
 
