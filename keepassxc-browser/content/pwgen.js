@@ -99,9 +99,13 @@ PasswordIcon.prototype.createIcon = function(field) {
 
 
 const kpxcPasswordGenerator = {};
+kpxcPasswordGenerator.panel = null;
+kpxcPasswordGenerator.currentPassword = '';
+kpxcPasswordGenerator.targetField = null;
 
 kpxcPasswordGenerator.showPasswordGenerator = async function(field) {
-    kpxcPasswordGenerator.generate(field ?? document.activeElement);
+    kpxcPasswordGenerator.targetField = field ?? document.activeElement;
+    kpxcPasswordGenerator.showPanel(kpxcPasswordGenerator.targetField);
 };
 
 kpxcPasswordGenerator.generate = async function(field) {
@@ -114,12 +118,157 @@ kpxcPasswordGenerator.generate = async function(field) {
     kpxcPasswordGenerator.fill(field, password || kpxcPasswordGenerator.generateLocalPassword());
 };
 
-kpxcPasswordGenerator.generateLocalPassword = function(length = 20) {
-    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-    const lower = 'abcdefghijkmnopqrstuvwxyz';
-    const digits = '23456789';
-    const symbols = '!@#$%^&*()-_=+[]{}';
-    const groups = [ upper, lower, digits, symbols ];
+kpxcPasswordGenerator.showPanel = function(field) {
+    kpxcPasswordGenerator.removePanel();
+    if (!field) {
+        return;
+    }
+
+    const panel = document.createElement('div');
+    panel.className = 'kpxc kpxc-pwgen-panel';
+
+    const title = document.createElement('div');
+    title.className = 'kpxc-pwgen-title';
+    title.textContent = 'Password generator';
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'kpxc-pwgen-close';
+    close.textContent = '×';
+    close.addEventListener('click', () => kpxcPasswordGenerator.removePanel());
+    title.appendChild(close);
+
+    const password = document.createElement('div');
+    password.className = 'kpxc-pwgen-password';
+
+    const lengthLabel = document.createElement('label');
+    lengthLabel.textContent = 'Length';
+    const length = document.createElement('input');
+    length.type = 'range';
+    length.min = '8';
+    length.max = '64';
+    length.value = '24';
+    const lengthValue = document.createElement('span');
+    lengthValue.className = 'kpxc-pwgen-length';
+
+    const checks = document.createElement('div');
+    checks.className = 'kpxc-pwgen-checks';
+    const option = (key, label, checked = true) => {
+        const wrapper = document.createElement('label');
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.dataset.kpxcPwgen = key;
+        input.checked = checked;
+        wrapper.append(input, document.createTextNode(label));
+        checks.appendChild(wrapper);
+        return input;
+    };
+    option('upper', 'Uppercase');
+    option('lower', 'Lowercase');
+    option('digits', 'Digits');
+    option('symbols', 'Symbols');
+    option('brackets', 'Brackets', false);
+    option('ambiguous', 'No ambiguous');
+
+    const customLabel = document.createElement('label');
+    customLabel.textContent = 'Symbols';
+    const customSymbols = document.createElement('input');
+    customSymbols.type = 'text';
+    customSymbols.className = 'kpxc-pwgen-symbols';
+    customSymbols.value = '!@#$%^&*_-+=?.';
+
+    const actions = document.createElement('div');
+    actions.className = 'kpxc-pwgen-actions';
+    const makeButton = (text, className = '') => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = className;
+        button.textContent = text;
+        actions.appendChild(button);
+        return button;
+    };
+    const generate = makeButton('Generate', 'primary');
+    const use = makeButton('Use');
+    const copy = makeButton('Copy');
+
+    panel.append(title, password, lengthLabel, length, lengthValue, checks, customLabel, customSymbols, actions);
+    document.documentElement.appendChild(panel);
+    kpxcPasswordGenerator.panel = panel;
+
+    const place = () => {
+        const rect = field.getBoundingClientRect();
+        panel.style.left = Pixels(Math.max(8, rect.left + window.scrollX));
+        panel.style.top = Pixels(rect.bottom + window.scrollY + 8);
+    };
+    place();
+
+    const refresh = () => {
+        lengthValue.textContent = `${length.value} characters`;
+        kpxcPasswordGenerator.currentPassword = kpxcPasswordGenerator.generateLocalPassword(
+            Number(length.value),
+            kpxcPasswordGenerator.panelOptions(panel)
+        );
+        password.textContent = kpxcPasswordGenerator.currentPassword;
+    };
+
+    generate.addEventListener('click', refresh);
+    length.addEventListener('input', refresh);
+    checks.addEventListener('change', refresh);
+    customSymbols.addEventListener('input', refresh);
+    use.addEventListener('click', () => {
+        kpxcPasswordGenerator.fill(kpxcPasswordGenerator.targetField, kpxcPasswordGenerator.currentPassword);
+        kpxcPasswordGenerator.removePanel();
+    });
+    copy.addEventListener('click', async () => {
+        await navigator.clipboard.writeText(kpxcPasswordGenerator.currentPassword);
+        copy.textContent = 'Copied';
+        setTimeout(() => {
+            copy.textContent = 'Copy';
+        }, 1200);
+    });
+
+    refresh();
+};
+
+kpxcPasswordGenerator.panelOptions = function(panel) {
+    const checked = key => panel.querySelector(`[data-kpxc-pwgen="${key}"]`)?.checked;
+    return {
+        upper: checked('upper'),
+        lower: checked('lower'),
+        digits: checked('digits'),
+        symbols: checked('symbols'),
+        brackets: checked('brackets'),
+        noAmbiguous: checked('ambiguous'),
+        customSymbols: panel.querySelector('.kpxc-pwgen-symbols')?.value || '!@#$%^&*_-+=?.',
+    };
+};
+
+kpxcPasswordGenerator.removePanel = function() {
+    kpxcPasswordGenerator.panel?.remove();
+    kpxcPasswordGenerator.panel = null;
+};
+
+kpxcPasswordGenerator.generateLocalPassword = function(length = 20, options = {}) {
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const digits = '0123456789';
+    const symbols = options.customSymbols || '!@#$%^&*_-+=?.';
+    const brackets = '[]{}()<>';
+    const ambiguous = new Set('iIlLoO01|'.split(''));
+    const filter = chars => options.noAmbiguous
+        ? Array.from(chars).filter(char => !ambiguous.has(char)).join('')
+        : chars;
+    const groups = [
+        options.upper !== false ? filter(upper) : '',
+        options.lower !== false ? filter(lower) : '',
+        options.digits !== false ? filter(digits) : '',
+        options.symbols !== false ? filter(symbols) : '',
+        options.brackets ? filter(brackets) : '',
+    ].filter(Boolean);
+    if (groups.length === 0) {
+        throw new Error('Choose at least one character set');
+    }
+
     const alphabet = groups.join('');
     const values = new Uint32Array(length + groups.length);
     crypto.getRandomValues(values);
