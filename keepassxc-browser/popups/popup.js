@@ -86,7 +86,7 @@ function dennisSetStatus(message, isError = false) {
 
 function dennisLoadEditor(entry = {}) {
     $('#dennis-editor').show();
-    $('#dennis-profile').value = entry.profile_id || entry.profileId || 'personal';
+    $('#dennis-profile').value = entry.profile_id || entry.profileId || '';
     $('#dennis-label').value = entry.label || '';
     $('#dennis-site').value = entry.site || $('#dennis-domain').value.trim();
     $('#dennis-username').value = entry.username || '';
@@ -200,15 +200,14 @@ function dennisShowEntries(entries) {
     });
 
     $('#dennis-new').addEventListener('click', () => dennisLoadEditor({
-        profile_id: 'personal',
         site: $('#dennis-domain').value.trim(),
     }));
 
     $('#dennis-save').addEventListener('click', async () => {
         const otp = $('#dennis-otp').value.trim();
         const domain = $('#dennis-domain').value.trim();
-        if (!domain || !otp || !$('#dennis-password').value) {
-            dennisSetStatus('Enter domain, OTP, and password.', true);
+        if (!domain || !otp || !$('#dennis-profile').value.trim() || !$('#dennis-password').value) {
+            dennisSetStatus('Enter domain, profile, OTP, and password.', true);
             return;
         }
         try {
@@ -217,7 +216,7 @@ function dennisShowEntries(entries) {
                 args: [ {
                     domain,
                     otpCode: otp,
-                    profileId: $('#dennis-profile').value.trim() || 'personal',
+                    profileId: $('#dennis-profile').value.trim(),
                     label: $('#dennis-label').value.trim(),
                     site: $('#dennis-site').value.trim() || domain,
                     username: $('#dennis-username').value.trim(),

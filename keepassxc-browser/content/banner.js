@@ -408,8 +408,6 @@ kpxcBanner.createDennisVaultSaveDialog = async function(credentials = {}, profil
             existingEntry.group,
             ...(credentials.list || []).map(entry => entry.group),
             ...profiles.map(profile => profile.name),
-            'personal',
-            'petar',
         ].filter(Boolean))
     );
     for (const profile of profileNames) {
@@ -419,6 +417,12 @@ kpxcBanner.createDennisVaultSaveDialog = async function(credentials = {}, profil
         profileSelect.appendChild(option);
     }
 
+    const customProfileOption = document.createElement('option');
+    customProfileOption.value = '';
+    customProfileOption.textContent = profileNames.length ? 'Type profile below' : 'Type profile';
+    profileSelect.appendChild(customProfileOption);
+
+    const profileInput = field('Profile', existingEntry.group || profileNames[0] || '');
     const domainInput = field('Domain', domain);
     const usernameInput = field('Username', credentials.username || existingEntry.login || '');
     const passwordInput = field('Password', credentials.password || '', 'text');
@@ -450,8 +454,9 @@ kpxcBanner.createDennisVaultSaveDialog = async function(credentials = {}, profil
             return;
         }
 
-        if (!domainInput.value.trim() || !passwordInput.value) {
-            kpxcUI.createNotification('error', 'Domain and password are required.');
+        const profileId = profileInput.value.trim() || profileSelect.value;
+        if (!profileId || !domainInput.value.trim() || !passwordInput.value) {
+            kpxcUI.createNotification('error', 'Profile, domain, and password are required.');
             return;
         }
 
@@ -468,7 +473,7 @@ kpxcBanner.createDennisVaultSaveDialog = async function(credentials = {}, profil
             reviewedCredentials.username,
             reviewedCredentials.password,
             reviewedCredentials.url,
-            profileSelect.value,
+            profileId,
             domainInput.value.trim(),
         ];
         if (options.existingEntry) {
@@ -485,6 +490,8 @@ kpxcBanner.createDennisVaultSaveDialog = async function(credentials = {}, profil
         title,
         profileLabel,
         profileSelect,
+        profileInput.previousSibling,
+        profileInput,
         domainInput.previousSibling,
         domainInput,
         usernameInput.previousSibling,

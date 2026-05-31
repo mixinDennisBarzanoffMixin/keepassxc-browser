@@ -16,19 +16,17 @@ dennisVault.settings = async function() {
         dennisVault: {
             enabled: true,
             brokerUrl: dennisVault.defaultBrokerUrl,
-            defaultProfileId: 'personal',
-            knownProfiles: [ 'personal', 'petar' ],
+            defaultProfileId: '',
+            knownProfiles: [],
         },
     });
 
     const settings = item.dennisVault || {};
     settings.enabled = settings.enabled !== false;
     settings.brokerUrl = (settings.brokerUrl || dennisVault.defaultBrokerUrl).replace(/\/+$/, '');
-    settings.defaultProfileId = settings.defaultProfileId || 'personal';
+    settings.defaultProfileId = settings.defaultProfileId || '';
     settings.knownProfiles = Array.isArray(settings.knownProfiles) ? settings.knownProfiles : [];
-    settings.knownProfiles = Array.from(
-        new Set([ settings.defaultProfileId, 'personal', 'petar', ...settings.knownProfiles ].filter(Boolean))
-    );
+    settings.knownProfiles = Array.from(new Set([ settings.defaultProfileId, ...settings.knownProfiles ].filter(Boolean)));
     return settings;
 };
 
@@ -184,6 +182,9 @@ dennisVault.saveCredentials = async function(username, password, url, profileId,
 
     const settings = await dennisVault.settings();
     const saveProfileId = profileId || settings.defaultProfileId;
+    if (!saveProfileId) {
+        return 'error';
+    }
     try {
         await dennisVault.post('/secrets/save-login', {
             /* eslint-disable camelcase */
@@ -220,7 +221,10 @@ dennisVault.readDomainManual = async function(domain, otpCode) {
 };
 
 dennisVault.saveLoginManual = async function(payload) {
-    const profileId = payload.profileId || 'personal';
+    const profileId = payload.profileId || '';
+    if (!profileId) {
+        throw new Error('Profile is required.');
+    }
     await dennisVault.post('/secrets/save-login', {
         /* eslint-disable camelcase */
         domain: dennisVault.domainFromUrl(payload.domain) || payload.domain,
