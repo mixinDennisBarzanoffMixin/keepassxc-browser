@@ -124,22 +124,146 @@ kpxcPasswordGenerator.showPanel = function(field) {
         return;
     }
 
+    const host = document.createElement('div');
+    host.style.all = 'initial';
+    host.style.position = 'fixed';
+    host.style.inset = '0';
+    host.style.zIndex = '2147483647';
+    const shadow = host.attachShadow({ mode: 'open' });
+    const style = document.createElement('style');
+    style.textContent = `
+        :host { all: initial; }
+        .backdrop {
+            align-items: center;
+            background: rgba(15, 23, 42, 0.28);
+            display: flex;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            inset: 0;
+            justify-content: center;
+            position: fixed;
+        }
+        .dialog {
+            background: #fff;
+            border: 1px solid #c8d0dc;
+            border-radius: 8px;
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+            box-sizing: border-box;
+            color: #161b25;
+            max-width: calc(100vw - 32px);
+            padding: 14px;
+            width: 380px;
+        }
+        * { box-sizing: border-box; }
+        .title {
+            align-items: center;
+            display: flex;
+            font-size: 15px;
+            font-weight: 700;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .close {
+            appearance: none;
+            background: transparent;
+            border: 0;
+            color: #4c5565;
+            cursor: pointer;
+            font: inherit;
+            font-size: 22px;
+            line-height: 1;
+            padding: 0 2px;
+            width: auto;
+        }
+        .password {
+            background: #f6f8fb;
+            border: 1px solid #d8dee8;
+            border-radius: 6px;
+            color: #101623;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.45;
+            margin-bottom: 10px;
+            overflow-wrap: anywhere;
+            padding: 10px;
+            user-select: all;
+        }
+        label {
+            color: #303848;
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 8px 0 5px;
+        }
+        input[type="range"], input[type="text"] { width: 100%; }
+        input[type="text"] {
+            border: 1px solid #c8d0dc;
+            border-radius: 5px;
+            color: #161b25;
+            font: inherit;
+            padding: 7px;
+        }
+        .length {
+            color: #687386;
+            display: block;
+            font-size: 12px;
+            margin-top: 3px;
+        }
+        .checks {
+            display: grid;
+            gap: 7px 10px;
+            grid-template-columns: 1fr 1fr;
+            margin-top: 8px;
+        }
+        .checks label {
+            align-items: center;
+            display: flex;
+            font-weight: 500;
+            gap: 7px;
+            margin: 0;
+        }
+        .checks input { margin: 0; width: auto; }
+        .actions {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: 1fr 1fr 1fr;
+            margin-top: 12px;
+        }
+        button.action {
+            appearance: none;
+            background: #edf1f7;
+            border: 1px solid #c8d0dc;
+            border-radius: 5px;
+            color: #161b25;
+            cursor: pointer;
+            font: 600 13px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            padding: 8px;
+            width: auto;
+        }
+        button.primary {
+            background: #1769e0;
+            border-color: #1769e0;
+            color: #fff;
+        }
+    `;
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'backdrop';
     const panel = document.createElement('div');
-    panel.className = 'kpxc kpxc-pwgen-panel';
+    panel.className = 'dialog';
 
     const title = document.createElement('div');
-    title.className = 'kpxc-pwgen-title';
+    title.className = 'title';
     title.textContent = 'Password generator';
 
     const close = document.createElement('button');
     close.type = 'button';
-    close.className = 'kpxc-pwgen-close';
+    close.className = 'close';
     close.textContent = '×';
     close.addEventListener('click', () => kpxcPasswordGenerator.removePanel());
     title.appendChild(close);
 
     const password = document.createElement('div');
-    password.className = 'kpxc-pwgen-password';
+    password.className = 'password';
 
     const lengthLabel = document.createElement('label');
     lengthLabel.textContent = 'Length';
@@ -149,10 +273,10 @@ kpxcPasswordGenerator.showPanel = function(field) {
     length.max = '64';
     length.value = '24';
     const lengthValue = document.createElement('span');
-    lengthValue.className = 'kpxc-pwgen-length';
+    lengthValue.className = 'length';
 
     const checks = document.createElement('div');
-    checks.className = 'kpxc-pwgen-checks';
+    checks.className = 'checks';
     const option = (key, label, checked = true) => {
         const wrapper = document.createElement('label');
         const input = document.createElement('input');
@@ -174,15 +298,15 @@ kpxcPasswordGenerator.showPanel = function(field) {
     customLabel.textContent = 'Symbols';
     const customSymbols = document.createElement('input');
     customSymbols.type = 'text';
-    customSymbols.className = 'kpxc-pwgen-symbols';
+    customSymbols.className = 'symbols';
     customSymbols.value = '!@#$%^&*_-+=?.';
 
     const actions = document.createElement('div');
-    actions.className = 'kpxc-pwgen-actions';
+    actions.className = 'actions';
     const makeButton = (text, className = '') => {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = className;
+        button.className = `action ${className}`.trim();
         button.textContent = text;
         actions.appendChild(button);
         return button;
@@ -192,21 +316,21 @@ kpxcPasswordGenerator.showPanel = function(field) {
     const copy = makeButton('Copy');
 
     panel.append(title, password, lengthLabel, length, lengthValue, checks, customLabel, customSymbols, actions);
-    document.documentElement.appendChild(panel);
-    kpxcPasswordGenerator.panel = panel;
-
-    const place = () => {
-        const rect = field.getBoundingClientRect();
-        panel.style.left = Pixels(Math.max(8, rect.left + window.scrollX));
-        panel.style.top = Pixels(rect.bottom + window.scrollY + 8);
-    };
-    place();
+    backdrop.appendChild(panel);
+    shadow.append(style, backdrop);
+    document.documentElement.appendChild(host);
+    kpxcPasswordGenerator.panel = host;
+    backdrop.addEventListener('click', event => {
+        if (event.target === backdrop) {
+            kpxcPasswordGenerator.removePanel();
+        }
+    });
 
     const refresh = () => {
         lengthValue.textContent = `${length.value} characters`;
         kpxcPasswordGenerator.currentPassword = kpxcPasswordGenerator.generateLocalPassword(
             Number(length.value),
-            kpxcPasswordGenerator.panelOptions(panel)
+            kpxcPasswordGenerator.panelOptions(shadow)
         );
         password.textContent = kpxcPasswordGenerator.currentPassword;
     };
@@ -239,7 +363,7 @@ kpxcPasswordGenerator.panelOptions = function(panel) {
         symbols: checked('symbols'),
         brackets: checked('brackets'),
         noAmbiguous: checked('ambiguous'),
-        customSymbols: panel.querySelector('.kpxc-pwgen-symbols')?.value || '!@#$%^&*_-+=?.',
+        customSymbols: panel.querySelector('.symbols')?.value || '!@#$%^&*_-+=?.',
     };
 };
 
