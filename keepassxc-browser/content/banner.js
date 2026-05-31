@@ -184,6 +184,11 @@ kpxcBanner.saveNewCredentials = async function(credentials = {}) {
         return;
     }
 
+    if (result.dennisVault) {
+        kpxcBanner.createDennisVaultSaveDialog(credentials, result.groups || [], {});
+        return;
+    }
+
     if (!result.defaultGroupAlwaysAsk) {
         if (result.defaultGroup === '' || result.defaultGroup === DEFAULT_BROWSER_GROUP) {
             await saveToDefaultGroup(credentials);
@@ -287,7 +292,176 @@ kpxcBanner.saveNewCredentials = async function(credentials = {}) {
     kpxcBanner.shadowSelector('.kpxc-banner-dialog').style.display = 'block';
 };
 
+kpxcBanner.createDennisVaultSaveDialog = function(credentials = {}, profiles = [], options = {}) {
+    kpxcBanner.shadowSelector('#kpxc-banner-btn-new').hidden = true;
+    kpxcBanner.shadowSelector('#kpxc-banner-btn-update').hidden = true;
+    kpxcBanner.shadowSelector('.kpxc-checkbox').disabled = true;
+
+    const existingDialog = kpxcBanner.shadowSelector('.kpxc-banner-dialog');
+    if (existingDialog) {
+        kpxcBanner.banner.removeChild(existingDialog);
+    }
+
+    const dialog = kpxcUI.createElement('div', 'kpxc-banner-dialog');
+    dialog.style.maxWidth = '420px';
+    dialog.style.width = '420px';
+    dialog.style.padding = '12px';
+    setDialogPosition(dialog);
+
+    const title = kpxcUI.createElement(
+        'p',
+        '',
+        {},
+        options.existingEntry ? 'Update Dennis Vault login' : 'Save to Dennis Vault',
+    );
+    title.style.fontWeight = 'bold';
+    title.style.margin = '0 0 8px';
+
+    const domain = (() => {
+        try {
+            return new URL(credentials.url || window.top.location.href).hostname.replace(/^www\./i, '');
+        } catch (_err) {
+            return credentials.url || window.top.location.hostname;
+        }
+    })();
+
+    const field = function(labelText, value, type = 'text') {
+        const label = kpxcUI.createElement('label', '', {}, labelText);
+        label.style.display = 'block';
+        label.style.fontSize = '12px';
+        label.style.fontWeight = 'bold';
+        label.style.margin = '8px 0 4px';
+
+        const input = kpxcUI.createElement('input', '', { type });
+        input.value = value || '';
+        input.style.background = 'var(--kpxc-input-background-color)';
+        input.style.border = '1px solid rgba(0,0,0,.25)';
+        input.style.borderRadius = '4px';
+        input.style.boxSizing = 'border-box';
+        input.style.color = 'var(--kpxc-text-color)';
+        input.style.padding = '7px';
+        input.style.width = '100%';
+        dialog.append(label, input);
+        return input;
+    };
+
+    const profileLabel = kpxcUI.createElement('label', '', {}, 'Account / profile');
+    profileLabel.style.display = 'block';
+    profileLabel.style.fontSize = '12px';
+    profileLabel.style.fontWeight = 'bold';
+    profileLabel.style.margin = '8px 0 4px';
+
+    const profileSelect = kpxcUI.createElement('select');
+    profileSelect.style.background = 'var(--kpxc-input-background-color)';
+    profileSelect.style.border = '1px solid rgba(0,0,0,.25)';
+    profileSelect.style.borderRadius = '4px';
+    profileSelect.style.boxSizing = 'border-box';
+    profileSelect.style.color = 'var(--kpxc-text-color)';
+    profileSelect.style.padding = '7px';
+    profileSelect.style.width = '100%';
+
+    const existingEntry = options.existingEntry || {};
+    const profileNames = Array.from(
+        new Set([
+            existingEntry.group,
+            ...(credentials.list || []).map(entry => entry.group),
+            ...profiles.map(profile => profile.name),
+            'personal',
+            'petar',
+        ].filter(Boolean))
+    );
+    for (const profile of profileNames) {
+        const option = document.createElement('option');
+        option.value = profile;
+        option.textContent = profile;
+        profileSelect.appendChild(option);
+    }
+
+    const domainInput = field('Domain', domain);
+    const usernameInput = field('Username', credentials.username || existingEntry.login || '');
+    const passwordInput = field('Password', credentials.password || '', 'text');
+    if (existingEntry.group) {
+        profileSelect.value = existingEntry.group;
+    }
+
+    const actions = kpxcUI.createElement('div');
+    actions.style.display = 'flex';
+    actions.style.gap = '8px';
+    actions.style.justifyContent = 'flex-end';
+    actions.style.marginTop = '12px';
+
+    const cancelButton = kpxcUI.createElement('button', RED_BUTTON, {}, tr('popupButtonCancel'));
+    const saveButton = kpxcUI.createElement('button', GREEN_BUTTON, {}, 'Save');
+    actions.append(cancelButton, saveButton);
+
+    cancelButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (!e.isTrusted) {
+            return;
+        }
+        kpxcBanner.destroy();
+    });
+
+    saveButton.addEventListener('click', async function(e) {
+        e.preventDefault();
+        if (!e.isTrusted) {
+            return;
+        }
+
+        if (!domainInput.value.trim() || !passwordInput.value) {
+            kpxcUI.createNotification('error', 'Domain and password are required.');
+            return;
+        }
+
+        const reviewedCredentials = {
+            ...credentials,
+            username: usernameInput.value.trim(),
+            password: passwordInput.value,
+            url: credentials.url || window.top.location.href,
+        };
+        kpxcBanner.credentials = reviewedCredentials;
+
+        const action = options.existingEntry ? 'update_credentials' : 'add_credentials';
+        const args = [
+            reviewedCredentials.username,
+            reviewedCredentials.password,
+            reviewedCredentials.url,
+            profileSelect.value,
+            domainInput.value.trim(),
+        ];
+        if (options.existingEntry) {
+            args.unshift(options.existingEntry.uuid);
+        }
+
+        const res = await sendMessage(action, [
+            ...args,
+        ]);
+        kpxcBanner.verifyResult(res);
+    });
+
+    dialog.append(
+        title,
+        profileLabel,
+        profileSelect,
+        domainInput.previousSibling,
+        domainInput,
+        usernameInput.previousSibling,
+        usernameInput,
+        passwordInput.previousSibling,
+        passwordInput,
+        actions,
+    );
+    kpxcBanner.banner.appendChild(dialog);
+};
+
 kpxcBanner.updateCredentials = async function(credentials = {}) {
+    const result = await sendMessage('get_database_groups');
+    if (result?.dennisVault && credentials.list?.length === 1) {
+        credentials.username ??= credentials.list[0].login;
+        kpxcBanner.createDennisVaultSaveDialog(credentials, result.groups || [], { existingEntry: credentials.list[0] });
+        return;
+    }
+
     //  Only one entry which could be updated
     if (credentials.list?.length === 1) {
         // Use the current username if it's empty

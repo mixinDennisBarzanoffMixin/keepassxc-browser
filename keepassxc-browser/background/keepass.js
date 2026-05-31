@@ -60,8 +60,8 @@ browser.storage.local.get({ 'latestKeePassXC': { 'version': '', 'lastChecked': n
 
 keepass.addCredentials = async function(tab, args = []) {
     if (await dennisVault.isEnabled()) {
-        const [ username, password, url ] = args;
-        return dennisVault.saveCredentials(username, password, url);
+        const [ username, password, url, profileId, domain ] = args;
+        return dennisVault.saveCredentials(username, password, url, profileId, domain);
     }
 
     const [ username, password, url, group, groupUuid ] = args;
@@ -70,8 +70,8 @@ keepass.addCredentials = async function(tab, args = []) {
 
 keepass.updateCredentials = async function(tab, args = []) {
     if (await dennisVault.isEnabled()) {
-        const [ _entryId, username, password, url ] = args;
-        return dennisVault.saveCredentials(username, password, url);
+        const [ _entryId, username, password, url, profileId, domain ] = args;
+        return dennisVault.saveCredentials(username, password, url, profileId, domain, _entryId);
     }
 
     try {
@@ -537,16 +537,16 @@ keepass.lockDatabase = async function(tab) {
 keepass.getDatabaseGroups = async function(tab) {
     if (await dennisVault.isEnabled()) {
         const settings = await dennisVault.settings();
+        const profiles = settings.knownProfiles.map(profileId => ({
+            name: profileId,
+            uuid: profileId,
+            children: [],
+        }));
         return {
+            dennisVault: true,
             defaultGroup: '',
             defaultGroupAlwaysAsk: false,
-            groups: [
-                {
-                    name: settings.defaultProfileId,
-                    uuid: settings.defaultProfileId,
-                    children: [],
-                },
-            ],
+            groups: profiles,
         };
     }
 

@@ -17,6 +17,7 @@ dennisVault.settings = async function() {
             enabled: true,
             brokerUrl: dennisVault.defaultBrokerUrl,
             defaultProfileId: 'personal',
+            knownProfiles: [ 'personal', 'petar' ],
         },
     });
 
@@ -24,6 +25,10 @@ dennisVault.settings = async function() {
     settings.enabled = settings.enabled !== false;
     settings.brokerUrl = (settings.brokerUrl || dennisVault.defaultBrokerUrl).replace(/\/+$/, '');
     settings.defaultProfileId = settings.defaultProfileId || 'personal';
+    settings.knownProfiles = Array.isArray(settings.knownProfiles) ? settings.knownProfiles : [];
+    settings.knownProfiles = Array.from(
+        new Set([ settings.defaultProfileId, 'personal', 'petar', ...settings.knownProfiles ].filter(Boolean))
+    );
     return settings;
 };
 
@@ -154,8 +159,20 @@ dennisVault.retrieveCredentials = async function(url) {
     }
 };
 
-dennisVault.saveCredentials = async function(username, password, url) {
-    const domain = dennisVault.domainFromUrl(url);
+dennisVault.rememberProfile = async function(profileId) {
+    if (!profileId) {
+        return;
+    }
+
+    const item = await browser.storage.local.get({ dennisVault: {} });
+    const settings = item.dennisVault || {};
+    const knownProfiles = Array.isArray(settings.knownProfiles) ? settings.knownProfiles : [];
+    settings.knownProfiles = Array.from(new Set([ ...knownProfiles, profileId ].filter(Boolean)));
+    await browser.storage.local.set({ dennisVault: settings });
+};
+
+dennisVault.saveCredentials = async function(username, password, url, profileId, domainOverride, existingPath) {
+    const domain = dennisVault.domainFromUrl(domainOverride || url) || String(domainOverride || '').replace(/^www\./i, '').toLowerCase();
     if (!domain || !password) {
         return 'error';
     }
@@ -166,18 +183,21 @@ dennisVault.saveCredentials = async function(username, password, url) {
     }
 
     const settings = await dennisVault.settings();
+    const saveProfileId = profileId || settings.defaultProfileId;
     try {
         await dennisVault.post('/secrets/save-login', {
             /* eslint-disable camelcase */
             domain,
-            profile_id: settings.defaultProfileId,
+            profile_id: saveProfileId,
             label: username || domain,
             username,
             password,
             site: url,
+            existing_path: existingPath || '',
             otp_code: otpCode,
             /* eslint-enable camelcase */
         });
+        await dennisVault.rememberProfile(saveProfileId);
         return 'created';
     } catch (err) {
         dennisVault.clearOtp();
@@ -200,16 +220,19 @@ dennisVault.readDomainManual = async function(domain, otpCode) {
 };
 
 dennisVault.saveLoginManual = async function(payload) {
+    const profileId = payload.profileId || 'personal';
     await dennisVault.post('/secrets/save-login', {
         /* eslint-disable camelcase */
         domain: dennisVault.domainFromUrl(payload.domain) || payload.domain,
-        profile_id: payload.profileId || 'personal',
+        profile_id: profileId,
         label: payload.label || payload.username || payload.domain,
         username: payload.username || '',
         password: payload.password || '',
         site: payload.site || payload.domain,
+        existing_path: payload.existingPath || '',
         otp_code: payload.otpCode,
         /* eslint-enable camelcase */
     });
+    await dennisVault.rememberProfile(profileId);
     return true;
 };
