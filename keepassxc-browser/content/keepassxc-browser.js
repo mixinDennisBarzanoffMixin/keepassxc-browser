@@ -481,7 +481,16 @@ kpxc.initLoginPopup = function() {
 
     // Initialize Popup Login and Autocomplete Menu items
     for (const l of loginItems) {
-        popupLoginItems.push({ text: l.text, uuid: l.uuid });
+        const credential = kpxc.credentials.find(c => c.uuid === l.uuid) || {};
+        popupLoginItems.push({
+            text: l.text,
+            uuid: l.uuid,
+            title: credential.name || l.title || '',
+            username: credential.login || '',
+            password: credential.password || '',
+            site: credential.url || '',
+            profile: credential.group || '',
+        });
 
         kpxcUserAutocomplete.elements.push({
             group: showGroupNameInAutocomplete ? l.group : undefined,

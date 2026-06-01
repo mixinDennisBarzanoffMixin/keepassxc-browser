@@ -55,6 +55,56 @@ code {
     cursor: pointer
 }
 
+.login-list-row {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+}
+
+.login-fill-button {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    flex: 1;
+    font: inherit;
+    padding: 4px 0;
+    text-align: left;
+}
+
+.login-details-button {
+    flex: 0 0 auto;
+}
+
+.login-details {
+    border-top: 1px solid rgb(203, 207, 203, 0.25);
+    font-size: 12px;
+    margin-top: 6px;
+    padding-top: 6px;
+}
+
+.login-detail-line {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: 76px minmax(0, 1fr);
+    padding: 2px 0;
+}
+
+.login-detail-label {
+    color: var(--bs-secondary-color);
+    font-weight: 700;
+}
+
+.login-detail-value {
+    overflow-wrap: anywhere;
+}
+
+.login-detail-secret {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    user-select: all;
+}
+
 .settings {
     display: flex;
     flex-wrap: wrap;
