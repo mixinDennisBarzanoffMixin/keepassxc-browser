@@ -185,6 +185,7 @@ function dennisShowEntries(entries) {
             dennisSetStatus('Enter domain and OTP.', true);
             return;
         }
+        $('#dennis-otp').value = '';
         try {
             dennisSetStatus(`Reading ${domain}...`);
             const data = await browser.runtime.sendMessage({
@@ -193,7 +194,6 @@ function dennisShowEntries(entries) {
             });
             dennisShowEntries(data.entries || []);
             dennisSetStatus((data.entries || []).length ? `Found ${(data.entries || []).length} login(s).` : 'No saved logins.', !(data.entries || []).length);
-            $('#dennis-otp').value = '';
         } catch (err) {
             dennisSetStatus(String(err.message || err), true);
         }
@@ -210,6 +210,7 @@ function dennisShowEntries(entries) {
             dennisSetStatus('Enter domain, profile, OTP, and password.', true);
             return;
         }
+        $('#dennis-otp').value = '';
         try {
             await browser.runtime.sendMessage({
                 action: 'dennis_vault_save_login',
@@ -223,7 +224,6 @@ function dennisShowEntries(entries) {
                     password: $('#dennis-password').value,
                 } ]
             });
-            $('#dennis-otp').value = '';
             dennisSetStatus('Saved. Re-read the domain to confirm.');
         } catch (err) {
             dennisSetStatus(String(err.message || err), true);

@@ -470,6 +470,7 @@ kpxcBanner.createDennisVaultSaveDialog = async function(credentials = {}, profil
             profileStatus.textContent = 'Enter OTP to unlock profile list.';
             return;
         }
+        profileOtp.value = '';
 
         try {
             profileStatus.textContent = 'Unlocking profiles...';
@@ -482,7 +483,6 @@ kpxcBanner.createDennisVaultSaveDialog = async function(credentials = {}, profil
             if (unlockedProfiles.length > 0 && !unlockedProfiles.includes(profileInput.value.trim())) {
                 profileInput.value = unlockedProfiles[0];
             }
-            profileOtp.value = '';
             profileStatus.textContent = unlockedProfiles.length
                 ? `Unlocked ${unlockedProfiles.length} profile(s).`
                 : 'No profiles found.';
