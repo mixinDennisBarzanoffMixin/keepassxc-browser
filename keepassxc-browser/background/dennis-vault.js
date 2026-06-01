@@ -5,11 +5,6 @@
 const dennisVault = {};
 
 dennisVault.defaultBrokerUrl = 'https://broker-production-792e.up.railway.app';
-dennisVault.otpTtlMs = 90 * 1000;
-dennisVault.session = {
-    otpCode: '',
-    expiresAt: 0,
-};
 
 dennisVault.settings = async function() {
     const item = await browser.storage.local.get({
@@ -44,21 +39,11 @@ dennisVault.markAvailable = function() {
     keepass.databaseHash = 'dennis-vault';
 };
 
-dennisVault.setOtp = function(otpCode) {
-    dennisVault.session.otpCode = otpCode;
-    dennisVault.session.expiresAt = Date.now() + dennisVault.otpTtlMs;
-};
-
 dennisVault.clearOtp = function() {
-    dennisVault.session.otpCode = '';
-    dennisVault.session.expiresAt = 0;
+    // Vault TOTP codes are single-use. Keep this as a no-op compatibility hook.
 };
 
 dennisVault.otp = async function(promptText = 'Dennis Vault TOTP code') {
-    if (dennisVault.session.otpCode && dennisVault.session.expiresAt > Date.now()) {
-        return dennisVault.session.otpCode;
-    }
-
     const requestId = Math.random().toString(16).slice(2);
     const storageKey = `dennisVaultOtp:${requestId}`;
     const popupUrl = browser.runtime.getURL(
@@ -84,9 +69,6 @@ dennisVault.otp = async function(promptText = 'Dennis Vault TOTP code') {
         await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    if (otpCode) {
-        dennisVault.setOtp(otpCode);
-    }
     return otpCode;
 };
 
