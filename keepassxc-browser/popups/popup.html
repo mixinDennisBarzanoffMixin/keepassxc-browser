@@ -135,20 +135,33 @@
       <hr>
       <div id="dennis-vault-manager">
         <h6>Dennis Vault</h6>
-        <input id="dennis-domain" class="form-control form-control-sm mb-1" placeholder="Domain, e.g. github.com">
-        <input id="dennis-otp" class="form-control form-control-sm mb-1" placeholder="OTP" type="password" inputmode="numeric">
+        <label class="dennis-label" for="dennis-domain">Domain</label>
+        <input id="dennis-domain" class="form-control form-control-sm mb-2" placeholder="github.com">
+        <div class="dennis-panel">
+          <div class="dennis-panel-title">Read existing logins</div>
+          <label class="dennis-label" for="dennis-read-otp">OTP</label>
+          <input id="dennis-read-otp" class="form-control form-control-sm mb-2" placeholder="One-time code" type="password" inputmode="numeric">
+          <button id="dennis-read" class="btn btn-sm btn-primary w-100">Read</button>
+        </div>
         <div class="d-flex gap-1 mb-2">
-          <button id="dennis-read" class="btn btn-sm btn-primary flex-fill">Read</button>
-          <button id="dennis-new" class="btn btn-sm btn-secondary flex-fill">New</button>
+          <button id="dennis-new" class="btn btn-sm btn-secondary flex-fill">New login</button>
         </div>
         <div id="dennis-status" class="small mb-2"></div>
         <div id="dennis-entries" class="list-group mb-2"></div>
         <div id="dennis-editor" style="display: none">
-          <input id="dennis-profile" class="form-control form-control-sm mb-1" placeholder="Profile">
-          <input id="dennis-label" class="form-control form-control-sm mb-1" placeholder="Label">
-          <input id="dennis-site" class="form-control form-control-sm mb-1" placeholder="Site URL">
-          <input id="dennis-username" class="form-control form-control-sm mb-1" placeholder="Username">
-          <input id="dennis-password" class="form-control form-control-sm mb-1" placeholder="Password">
+          <div class="dennis-editor-title">Save login</div>
+          <label class="dennis-label" for="dennis-profile">Profile</label>
+          <input id="dennis-profile" class="form-control form-control-sm mb-1" placeholder="personal">
+          <label class="dennis-label" for="dennis-label">Label</label>
+          <input id="dennis-label" class="form-control form-control-sm mb-1" placeholder="What this login is called">
+          <label class="dennis-label" for="dennis-site">Site URL</label>
+          <input id="dennis-site" class="form-control form-control-sm mb-1" placeholder="https://example.com/login">
+          <label class="dennis-label" for="dennis-username">Username</label>
+          <input id="dennis-username" class="form-control form-control-sm mb-1" placeholder="name@example.com">
+          <label class="dennis-label" for="dennis-password">Password</label>
+          <input id="dennis-password" class="form-control form-control-sm mb-2" placeholder="Password">
+          <label class="dennis-label" for="dennis-save-otp">OTP to save</label>
+          <input id="dennis-save-otp" class="form-control form-control-sm mb-2" placeholder="One-time code" type="password" inputmode="numeric">
           <button id="dennis-save" class="btn btn-sm btn-success w-100">Save login</button>
         </div>
       </div>
