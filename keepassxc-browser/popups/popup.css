@@ -126,6 +126,13 @@ code {
     margin-bottom: 7px;
 }
 
+.dennis-profile-unlock {
+    display: grid;
+    gap: 6px;
+    grid-template-columns: 1fr auto;
+    margin-bottom: 4px;
+}
+
 #dennis-editor {
     border-top: 1px solid rgb(203, 207, 203, 0.25);
     margin-top: 8px;

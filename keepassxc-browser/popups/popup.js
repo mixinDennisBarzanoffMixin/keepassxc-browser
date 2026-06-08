@@ -104,6 +104,9 @@ async function dennisCurrentTabDefaults() {
 function dennisLoadEditor(entry = {}) {
     $('#dennis-editor').show();
     $('#dennis-profile').value = entry.profile_id || entry.profileId || 'personal';
+    $('#dennis-profile-otp').value = '';
+    $('#dennis-profile-select').hide();
+    $('#dennis-profile-select').replaceChildren();
     $('#dennis-label').value = entry.label || '';
     $('#dennis-site').value = entry.site || $('#dennis-domain').value.trim();
     $('#dennis-username').value = entry.username || '';
@@ -232,6 +235,48 @@ function dennisShowEntries(entries) {
             profile_id: 'personal',
             site: currentDefaults.site || $('#dennis-domain').value.trim(),
         });
+    });
+
+    $('#dennis-unlock-profiles').addEventListener('click', async () => {
+        const otp = $('#dennis-profile-otp').value.trim();
+        if (!otp) {
+            dennisSetStatus('Enter OTP to unlock profile list.', true);
+            return;
+        }
+        $('#dennis-profile-otp').value = '';
+        try {
+            dennisSetStatus('Unlocking profiles...');
+            const data = await browser.runtime.sendMessage({
+                action: 'dennis_vault_read_profiles',
+                args: [ otp ]
+            });
+            const profiles = Array.from(new Set(data.profiles || [])).filter(Boolean);
+            const select = $('#dennis-profile-select');
+            select.replaceChildren();
+            for (const profile of profiles) {
+                const option = document.createElement('option');
+                option.value = profile;
+                option.textContent = profile;
+                select.appendChild(option);
+            }
+            if (profiles.length > 0) {
+                select.show();
+                select.value = profiles.includes($('#dennis-profile').value.trim())
+                    ? $('#dennis-profile').value.trim()
+                    : profiles[0];
+                $('#dennis-profile').value = select.value;
+                dennisSetStatus(`Unlocked ${profiles.length} profile(s).`);
+            } else {
+                select.hide();
+                dennisSetStatus('No profiles found.', true);
+            }
+        } catch (err) {
+            dennisSetStatus(String(err.message || err), true);
+        }
+    });
+
+    $('#dennis-profile-select').addEventListener('change', () => {
+        $('#dennis-profile').value = $('#dennis-profile-select').value;
     });
 
     $('#dennis-save').addEventListener('click', async () => {
